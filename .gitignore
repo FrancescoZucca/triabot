@@ -1,3 +1,7 @@
 __pycache__/
 .vscode/
 .trash/
+assets/
+.idea/
+venv/
+start.sh

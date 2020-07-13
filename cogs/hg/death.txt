@@ -1,3 +1,0 @@
-$PLAYERNAME tested so hard that he melted.
-$PLAYERNAME tried to run Android Studio on their computer and melted from the heat.
-$PLAYERNAME tried to create an offline game in PHP. $PLAYERNAME died in frustration.

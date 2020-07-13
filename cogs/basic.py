@@ -1,49 +1,80 @@
-from discord.ext.commands import Cog, command
-from datetime import datetime
-from random import choice, uniform
-from itertools import chain
-from math import log1p
+from discord.ext.commands import (
+    Cog,
+    BadArgument,
+    group,
+    command,
+)
+
+import random
+from ._utils import grouper
+from functools import reduce
+
 
 class Basic(Cog):
-    """Basic features of the bot, basic in the sense that
-    it takes less computational overhead."""
+    """Basic commands for doing mostly funny stuff."""
 
     @command()
-    async def ping(self, ctx):
-        "Computes the timedelta between posting a message and getting it."
-        await ctx.send(
-            f'Timedelta: {datetime.utcnow() - ctx.message.created_at}')
-    
+    async def test(self, ctx):
+        """Verify that the bot is usable, tells the current WebSocket delay"""
+
+        await ctx.send(f"{round(ctx.bot.latency * 1000, 2)}ms")
+
     @command()
-    async def rand(self, ctx, min: complex, max: complex):
-        "Generate a pseudo-random number between a given bound (min..max]."
-        await ctx.send(uniform(min, max))
+    async def random(self, ctx, min: float, max: float):
+        """Generate a pseudorandom decimal in bound of (min..max]"""
+
+        await ctx.send(random.uniform(min, max))
 
     @command()
     async def pick(self, ctx, *options):
-        "Pick an option from a provided list of options (separted by spaces) randomly."
-        await ctx.send(choice(options))
+        """Pick pseudorandomly from given list of options"""
+
+        await ctx.send(random.choice(options))
 
     @command()
-    async def rndspc(self, ctx, *frags):
-        """Joins single-letters with spaces with random spaces,
-        using a little-complex alogirthms."""
+    async def space(self, ctx, spaces: int, *, text: str):
+        """Spaces characters with a defined amount to emphasize a text"""
 
-        await ctx.send(''.join(
-            c + ' ' * int(log1p(i)) for i,c in
-                enumerate(chain(*frags))))
+        if len(text) * spaces > 2000:
+            raise BadArgument("Disallowing 2000 character limit of Discord")
 
-    @command()
-    async def rndcap(self, ctx, *frags):
-        """Does alternate capitalization of text, this is mostly
-        used to say a wrong statement in sarcastic way. See this:
-        https://english.stackexchange.com/q/533036"""
-
-        await ctx.send(''.join(
-            choice([c.upper, c.lower])() for c in
-                ' '.join(frags)))
+        await ctx.send(''.join(c + ' ' * spaces for c in text))
 
     @command()
-    async def purge(self, ctx, msgNo: int):
-        for msg in (await ctx.history(limit = msgNo).flatten()):
-            await msg.delete()
+    async def altcap(self, ctx, *, text: str):
+        """Randomly capitalizes each English letter of a text as if it was wrong in a ironic way"""
+
+        await ctx.send(''.join(random.choice([c.upper, c.lower])() for c in text))
+
+    @group(name='5igi0')
+    async def sigio(self, _):
+        """A morse-code like binary interchange format, that consists of `-` and `'` characters"""
+        pass
+
+    @sigio.command(name='encode')
+    async def sigio_encode(self, ctx, *, text: str):
+        """Encode from UTF-8 characters into 5IGI0 (maximum chars: 250)"""
+
+        text = text.encode('utf-8')  # single-byte encoding.
+        if len(text) * 8 > 2000:
+            return
+
+        await ctx.send(''.join(''.join("-'"[c >> b & 1] for b in range(7, -1, -1)) for c in text))
+
+    @sigio.command(name='decode')
+    async def sigio_decode(self, ctx, sigi0: str):
+        """Decode from 5IGI0 to UTF-8 characters"""
+
+        if len(sigi0) % 8 != 0:
+            raise BadArgument("Input length isn't multiple of 8")
+
+        data = bytes(reduce(lambda c, b: c | "-'".index(b[1]) << b[0], zip(range(7, -1, -1), bits), 0) for bits in
+                     grouper(sigi0, 8))
+
+        try:
+            await ctx.send(data.decode('utf-8'))
+        except UnicodeDecodeError:
+            raise BadArgument("5IGI0 sequence cannot be converted using UTF-8")
+
+
+__cogexport__ = [Basic]
